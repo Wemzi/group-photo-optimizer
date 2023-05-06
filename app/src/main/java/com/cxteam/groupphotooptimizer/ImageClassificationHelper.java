@@ -1,11 +1,13 @@
 package com.cxteam.groupphotooptimizer;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import com.cxteam.groupphotooptimizer.ml.ModelMnis;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 
 
@@ -18,24 +20,64 @@ class ImageClassificationHelper
 
     ModelMnis model;
 
-    // Runs model inference and gets result.
-    public void classifyImage() throws IOException
+    //gets the index of the max value in a float array
+    private int getMaximumIndex(float[] array) {
+        if (array.length <= 0)
+            throw new IllegalArgumentException("The array is empty");
+        int max = 0;
+        for (int i = 0; i < array.length; i++)
+        {
+            System.out.println(array[i]);
+            if (array[max] < array[i]) max = i;
+        }
+
+        return max;
+    }
+
+    public Bitmap drawableToBitmap (Drawable drawable) {
+        Bitmap bitmap = Bitmap.createBitmap(28, 28, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+
+        return bitmap;
+    }
+
+    public float[] convert_A888_RGB_TO_FLOATS(byte[] input)
+    {
+        float[] output = new float[input.length/4];
+        int j=0;
+        for(int i=0; j<output.length-1; i+=4)
+        {
+            output[j++] = (float) (Math.abs(input[i])/255.0 * 1.95  ); // 255.0 * 2
+        }
+        return output;
+    }
+
+    // Runs model inference and gets the number tipped by the model.
+    public int classifyImage(int id) throws IOException
     {
         //Load model
         model = ModelMnis.newInstance(context);
         // Creates inputs for reference.
-        TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, 784}, DataType.FLOAT32);
+        TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1,784},DataType.FLOAT32);
 
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        options.outWidth = 28;
-        options.outHeight = 28;
+        Drawable mnist_drawable = context.getResources().getDrawable(id);
+        Bitmap mnist_image = drawableToBitmap(mnist_drawable);
+        ByteBuffer inputBuffer = ByteBuffer.allocateDirect(28 * 28 *4 );
+        mnist_image.copyPixelsToBuffer(inputBuffer);
+        float[] converted_mnist_image_floats = convert_A888_RGB_TO_FLOATS(inputBuffer.array());
+        ByteBuffer inputBuffer2  = ByteBuffer.allocateDirect(28 * 28 * 4 );
+        for(int i=0; i<converted_mnist_image_floats.length-1;i++)
+        {
+            inputBuffer2.putFloat(converted_mnist_image_floats[i]);
+        }
+        inputFeature0.loadBuffer(inputBuffer2);
 
-        Bitmap mnist_image = BitmapFactory.decodeResource(context.getResources(), R.drawable.mnist_seven,options);
         ModelMnis.Outputs outputs = model.process(inputFeature0);
         TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
-        System.out.println(outputFeature0.getBuffer());
         model.close();
+        return getMaximumIndex(outputFeature0.getFloatArray());
     }
 
 }

@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -32,9 +33,14 @@ public class SecondFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
             ImageClassificationHelper imageClassifier = new ImageClassificationHelper(binding.getRoot().getContext());
 
-
+        Integer tippedNumber = 0;
         try {
-            imageClassifier.classifyImage();
+            int imageID = R.drawable.mnist_seven;
+            binding.imageView.setImageDrawable(getResources().getDrawable(imageID));
+            tippedNumber=imageClassifier.classifyImage(imageID);
+            System.out.println(tippedNumber);
+            TextView text = binding.textviewSecond.findViewById(R.id.textview_second);
+            text.setText(tippedNumber.toString());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
