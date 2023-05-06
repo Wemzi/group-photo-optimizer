@@ -11,6 +11,8 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.cxteam.groupphotooptimizer.databinding.FragmentSecondBinding;
 
+import java.io.IOException;
+
 public class SecondFragment extends Fragment {
 
     private FragmentSecondBinding binding;
@@ -28,14 +30,16 @@ public class SecondFragment extends Fragment {
 
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+            ImageClassificationHelper imageClassifier = new ImageClassificationHelper(binding.getRoot().getContext());
 
-        binding.buttonSecond.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                NavHostFragment.findNavController(SecondFragment.this)
-                        .navigate(R.id.action_SecondFragment_to_FirstFragment);
-            }
-        });
+
+        try {
+            imageClassifier.classifyImage();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        binding.buttonSecond.setOnClickListener(view1 -> NavHostFragment.findNavController(SecondFragment.this)
+                .navigate(R.id.action_SecondFragment_to_FirstFragment));
     }
 
     @Override
