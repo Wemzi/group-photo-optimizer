@@ -35,7 +35,7 @@ public class SecondFragment extends Fragment {
 
         Integer tippedNumber = 0;
         try {
-            int imageID = R.drawable.mnist_seven;
+            int imageID = R.drawable.mnist_nine;
             binding.imageView.setImageDrawable(getResources().getDrawable(imageID));
             tippedNumber=imageClassifier.classifyImage(imageID);
             System.out.println(tippedNumber);
