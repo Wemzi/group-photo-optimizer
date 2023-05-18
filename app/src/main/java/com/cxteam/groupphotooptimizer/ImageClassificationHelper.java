@@ -1,87 +1,78 @@
 package com.cxteam.groupphotooptimizer;
+
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.drawable.Drawable;
-import com.cxteam.groupphotooptimizer.ml.ModelMnis;
-import org.tensorflow.lite.DataType;
-import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+
+import org.tensorflow.lite.Interpreter;
+
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
+import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
+import java.util.Arrays;
 
 
 class ImageClassificationHelper
 {
     Context context;
-    ImageClassificationHelper(Context context) {
+    Interpreter model_interpreter;
+    ImageClassificationHelper(Context context) throws IOException {
         this.context = context;
+        model_interpreter = loadModelFile();
     }
 
-    ModelMnis model;
-
-    //gets the index of the max value in a float array
-    private int getMaximumIndex(float[] array) {
-        if (array.length <= 0)
+    //gets the index of the max value in a float[1][n] array
+    private int getMaximumIndex(float[][] array) {
+        if (array.length == 0)
             throw new IllegalArgumentException("The array is empty");
+        System.out.println(Arrays.deepToString(array));
         int max = 0;
-        for (int i = 0; i < array.length; i+=1)
+        for (int i = 0; i < array[0].length; i+=1)
         {
-            if (array[max] < array[i]) max = i;
+            if (array[0][max] < array[0][i]) max = i;
+
         }
 
         return max;
     }
 
-    public Bitmap drawableToBitmap (Drawable drawable) {
-        Bitmap bitmap = Bitmap.createBitmap(28, 28, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-        drawable.draw(canvas);
-
-        return bitmap;
-    }
-
-    public float[] convert_A888_RGB_TO_FLOATS(byte[] input)
+    private Interpreter loadModelFile() throws IOException
     {
-        float[] output = new float[input.length/4];
-        int j=0;
-        for(int i=0; j<output.length-1; i+=4)
-        {
-            output[j++] = input[i] - (-127) / 255;
-        }
-        return output;
+        AssetFileDescriptor fileDescriptor = context.getAssets().openFd("mnist_model.tflite");
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel();
+        long startOffset = fileDescriptor.getStartOffset();
+        long declaredLength = fileDescriptor.getDeclaredLength();
+        ByteBuffer mbb = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        return new Interpreter(mbb);
     }
 
     // Runs model inference and gets the number tipped by the model.
     public int classifyImage(int id) throws IOException
     {
-        //Load model
-        model = ModelMnis.newInstance(context);
-        // Creates inputs for reference.
-
-        // Creates inputs for reference.
-        TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{28,28},DataType.FLOAT32);
-
-        Drawable mnist_drawable = context.getResources().getDrawable(id);
-        Bitmap mnist_image = drawableToBitmap(mnist_drawable);
-        ByteBuffer inputBuffer = ByteBuffer.allocateDirect(28 * 28 * 4 );
-        mnist_image.copyPixelsToBuffer(inputBuffer);
-        byte[] lol = inputBuffer.array();
-        float[] converted_mnist_image_floats = convert_A888_RGB_TO_FLOATS(inputBuffer.array());
-        ByteBuffer inputBuffer2  = ByteBuffer.allocateDirect(28 * 28 * 4);
-        for(int i=0; i<converted_mnist_image_floats.length-1;i++)
+        Bitmap map = BitmapFactory.decodeResource(context.getResources(), id);
+        //decodeResource will resize the image depending on the screen size (78x78 in case of Pixel 3A)
+        //so we need to resize it again for the input
+        Bitmap scaledMap = Bitmap.createScaledBitmap(map,28,28,false);
+        ByteBuffer grayscale = ByteBuffer.allocateDirect(scaledMap.getWidth()*scaledMap.getHeight()*4);
+        grayscale.order(ByteOrder.nativeOrder());
+        int[] pixels = new int[28 * 28];
+        scaledMap.getPixels(pixels,0,scaledMap.getWidth(),0,0,scaledMap.getWidth(),scaledMap.getHeight());
+        //what the hell is this
+        for(int pixel : pixels)
         {
-            inputBuffer2.putFloat(converted_mnist_image_floats[i]);
+            float rChannel = (pixel >> 16) & 0xFF;
+            float gChannel = (pixel >> 8) & 0xFF;
+            float bChannel = (pixel) & 0xFF;
+            float pixelValue = (rChannel + gChannel + bChannel) / 3 / 255.f;
+            grayscale.putFloat(pixelValue);
         }
-        inputFeature0.loadBuffer(inputBuffer2);
-        ModelMnis.Outputs outputs = model.process(inputFeature0);
-        //convert back just for fun
-        ByteBuffer afterBuffer  = ByteBuffer.allocateDirect(28 * 28 * 4);
-        TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
-        model.close();
-        return getMaximumIndex(outputFeature0.getFloatArray());
+        float[][] outputs = new float[1][10];
+        model_interpreter.run(grayscale,outputs);
+        return getMaximumIndex(outputs);
     }
 
 }
