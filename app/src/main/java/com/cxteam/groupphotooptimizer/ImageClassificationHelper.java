@@ -1,116 +1,92 @@
 package com.cxteam.groupphotooptimizer;
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import com.cxteam.groupphotooptimizer.ml.ModelMnis;
-import org.tensorflow.lite.DataType;
-import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import android.os.Build;
+import android.os.FileUtils;
 
+import androidx.annotation.RequiresApi;
+
+import org.tensorflow.lite.DataType;
+import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.AccessMode;
+import java.util.Arrays;
 
 
 class ImageClassificationHelper
 {
-    private static final float[] zero = new float[] {
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    };
-
     Context context;
-    ImageClassificationHelper(Context context)
-    {
+    Interpreter model_interpreter;
+    ImageClassificationHelper(Context context) throws IOException {
         this.context = context;
+        model_interpreter = loadModelFile();
     }
 
-    //gets the index of the max value in a float array
-    private int getMaximumIndex(float[] array) {
-        if (array.length <= 0)
+    //gets the index of the max value in a float[1][n] array
+    private int getMaximumIndex(float[][] array) {
+        if (array.length == 0)
             throw new IllegalArgumentException("The array is empty");
+        System.out.println(Arrays.deepToString(array));
         int max = 0;
-        for (int i = 0; i < array.length; i+=1)
+        for (int i = 0; i < array[0].length; i+=1)
         {
-            if (array[max] < array[i]) max = i;
+            if (array[0][max] < array[0][i]) max = i;
+
         }
 
         return max;
     }
 
-    public float[] convert_A888_RGB_TO_FLOATS(byte[] input)
+    private Interpreter loadModelFile() throws IOException
     {
-        float[] output = new float[input.length/4];
-        int j=0;
-        for(int i=0; j<output.length-1; i+=4)
-        {
-            output[j++] = input[i] - (-127) / 255;
-        }
-        return output;
+        AssetFileDescriptor fileDescriptor = context.getAssets().openFd("mnist_model.tflite");
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel();
+        long startOffset = fileDescriptor.getStartOffset();
+        long declaredLength = fileDescriptor.getDeclaredLength();
+        ByteBuffer mbb = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        return new Interpreter(mbb);
     }
 
     // Runs model inference and gets the number tipped by the model.
     public int classifyImage(int id) throws IOException
     {
-        ModelMnis model = ModelMnis.newInstance(context);
-
-        TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{28,28},DataType.FLOAT32);
-
-
-        Bitmap map = BitmapFactory.decodeResource(context.getResources(), R.drawable.mnist_four);
-
-        float[] grayscale = new float[28*28];
-        for (int x = 0; x < 28; x++)
+        Bitmap map = BitmapFactory.decodeResource(context.getResources(), id);
+        //decodeResource will resize the image depending on the screen size (78x78 in case of Pixel 3A)
+        //so we need to resize it again for the input
+        Bitmap scaledMap = Bitmap.createScaledBitmap(map,28,28,false);
+        ByteBuffer grayscale = ByteBuffer.allocateDirect(scaledMap.getWidth()*scaledMap.getHeight()*4);
+        grayscale.order(ByteOrder.nativeOrder());
+        int[] pixels = new int[28 * 28];
+        scaledMap.getPixels(pixels,0,scaledMap.getWidth(),0,0,scaledMap.getWidth(),scaledMap.getHeight());
+        //what the hell is this
+        for(int pixel : pixels)
         {
-            for (int y = 0; y < 28; y++)
-            {
-                if(x < map.getWidth() && y < map.getHeight())
-                {
-                    int c = map.getPixel(x,y);
-                    grayscale[y * 28 + x] = ((Color.red(c) + Color.blue(c) + Color.green(c)) / 3) / 256F;
-
-                }
-                else
-                {
-                    grayscale[y * 28 + x] = 0;
-                }
-            }
+            float rChannel = (pixel >> 16) & 0xFF;
+            float gChannel = (pixel >> 8) & 0xFF;
+            float bChannel = (pixel) & 0xFF;
+            float pixelValue = (rChannel + gChannel + bChannel) / 3 / 255.f;
+            grayscale.putFloat(pixelValue);
         }
-        inputFeature0.loadArray(grayscale);
-
-        ModelMnis.Outputs outputs = model.process(inputFeature0);
-
-        TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
-        model.close();
-
-        return getMaximumIndex(outputFeature0.getFloatArray());
+        float[][] outputs = new float[1][10];
+        model_interpreter.run(grayscale,outputs);
+        return getMaximumIndex(outputs);
     }
 
 }

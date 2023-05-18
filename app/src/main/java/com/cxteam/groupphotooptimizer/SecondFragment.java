@@ -31,11 +31,16 @@ public class SecondFragment extends Fragment {
 
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-            ImageClassificationHelper imageClassifier = new ImageClassificationHelper(binding.getRoot().getContext());
+        ImageClassificationHelper imageClassifier = null;
+        try {
+            imageClassifier = new ImageClassificationHelper(binding.getRoot().getContext());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         Integer tippedNumber = 0;
         try {
-            int imageID = R.drawable.mnist_nine;
+            int imageID = R.drawable.mnist_three;
             binding.imageView.setImageDrawable(getResources().getDrawable(imageID));
             tippedNumber=imageClassifier.classifyImage(imageID);
             System.out.println(tippedNumber);
