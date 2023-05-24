@@ -7,23 +7,23 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
-import com.cxteam.groupphotooptimizer.databinding.FragmentFirstBinding;
+import com.cxteam.groupphotooptimizer.databinding.FragmentMenuBinding;
 
-public class FirstFragment extends Fragment {
-    private FragmentFirstBinding binding;
+public class MenuFragment extends Fragment {
+    private FragmentMenuBinding binding;
     @Override
     public View onCreateView(
             LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState
     ) {
-        binding = FragmentFirstBinding.inflate(inflater, container, false);
+        binding = FragmentMenuBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        binding.buttonFirst2.setOnClickListener(view1 -> NavHostFragment.findNavController(FirstFragment.this)
-                .navigate(R.id.action_FirstFragment_to_SecondFragment));
+        binding.buttonFirst2.setOnClickListener(view1 -> NavHostFragment.findNavController(MenuFragment.this)
+                .navigate(R.id.action_MenuFragment_to_GalleryFragment));
     }
 
     @Override

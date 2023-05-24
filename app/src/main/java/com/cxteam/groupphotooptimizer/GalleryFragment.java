@@ -10,13 +10,13 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
-import com.cxteam.groupphotooptimizer.databinding.FragmentSecondBinding;
+import com.cxteam.groupphotooptimizer.databinding.FragmentGalleryBinding;
 
 import java.io.IOException;
 
-public class SecondFragment extends Fragment {
+public class GalleryFragment extends Fragment {
 
-    private FragmentSecondBinding binding;
+    private FragmentGalleryBinding binding;
 
     @Override
     public View onCreateView(
@@ -24,7 +24,7 @@ public class SecondFragment extends Fragment {
             Bundle savedInstanceState
     ) {
 
-        binding = FragmentSecondBinding.inflate(inflater, container, false);
+        binding = FragmentGalleryBinding.inflate(inflater, container, false);
         return binding.getRoot();
 
     }
@@ -49,8 +49,8 @@ public class SecondFragment extends Fragment {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        binding.buttonSecond.setOnClickListener(view1 -> NavHostFragment.findNavController(SecondFragment.this)
-                .navigate(R.id.action_SecondFragment_to_FirstFragment));
+        binding.buttonSecond.setOnClickListener(view1 -> NavHostFragment.findNavController(GalleryFragment.this)
+                .navigate(R.id.action_GalleryFragment_to_MenuFragment));
     }
 
     @Override
